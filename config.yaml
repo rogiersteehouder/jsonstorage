@@ -1,0 +1,33 @@
+# Server
+server:
+  # if set: directory for server files
+  # if not set: use the same directory as the config file
+  #directory:
+  # server host and port
+  host: localhost
+  port: 8001
+  # ssl key files for https (omit for http)
+  ssl-key: localhost-key.pem
+  ssl-cert: localhost.pem
+
+# Authentication
+security:
+  # if you set this, it will be hashed (see below) and removed from the config file
+  #password:
+  # hashed password
+  # if this and the password above are unset, the app will ask for one and save it here
+  hash: $pbkdf2-sha256$29000$E.IcI2QMwZjTGuMcw9j7vw$KwExI0fWRwzUjGxp28uOuktYzhdXw7PGqktACwBhM7E
+
+# Logging
+logging:
+  # if set: directory for log files
+  # if not set: use the server directory (see above)
+  #directory:
+  # log levels for console and file
+  console level: success
+  file level: info
+
+# Database
+database:
+  # filename
+  filename: jsonstorage.sqlite

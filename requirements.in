@@ -1,0 +1,8 @@
+starlite
+uvicorn
+passlib
+loguru
+# Optional:
+jsonpatch
+ruamel.yaml
+toml

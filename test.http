@@ -1,0 +1,122 @@
+@host = https://localhost:8001
+@auth = Authorization: Basic rogier:Test
+
+####
+
+get {{host}}/
+{{auth}}
+
+####
+
+get {{host}}/storage/
+{{auth}}
+
+####
+
+post {{host}}/storage/
+{{auth}}
+Content-Type: application/json
+
+{ "test": "Testing 1..2..3.." }
+
+####
+
+get {{host}}/storage/11e0bf3c-8783-11ec-8c86-8c85909adcf9
+{{auth}}
+
+####
+
+get {{host}}/storage/nonsense
+{{auth}}
+
+####
+
+put {{host}}/storage/test-item
+{{auth}}
+Content-Type: application/json
+
+{ "name": "test-item", "test": "Testing 1..2..3.." }
+
+####
+
+get {{host}}/storage/test-item
+{{auth}}
+
+####
+
+patch {{host}}/storage/test-item
+{{auth}}
+Content-Type: application/json-patch+json
+
+[
+    { "op": "add", "path": "/description", "value": "Testing 1..2..3.." },
+    { "op": "remove", "path": "/test" }
+]
+
+####
+
+delete {{host}}/storage/test-item
+{{auth}}
+
+####
+
+delete {{host}}/storage/
+{{auth}}
+
+####
+
+
+####
+
+get {{host}}/history/
+{{auth}}
+
+####
+
+post {{host}}/history/?effdt=2022-01-31 12:00:00
+{{auth}}
+Content-Type: application/json
+
+{ "test": "Testing 1..2..3.." }
+
+####
+
+get {{host}}/history/nonsense
+{{auth}}
+
+####
+
+put {{host}}/history/test-item
+{{auth}}
+Content-Type: application/json
+
+{ "name": "test-item", "test": "Testing 1..2..3.." }
+
+####
+
+get {{host}}/history/test-item
+{{auth}}
+
+####
+
+patch {{host}}/history/test-item
+{{auth}}
+Content-Type: application/json-patch+json
+
+[
+    { "op": "add", "path": "/description", "value": "Testing 1..2..3.." },
+    { "op": "remove", "path": "/test" }
+]
+
+####
+
+delete {{host}}/history/test-item
+{{auth}}
+
+####
+
+delete {{host}}/history/
+{{auth}}
+
+####
+
