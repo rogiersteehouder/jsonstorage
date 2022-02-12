@@ -1,9 +1,9 @@
 """App Configuration
 """
 
-__author__  = 'Rogier Steehouder'
-__date__    = '2022-01-29'
-__version__ = '1.0'
+__author__ = "Rogier Steehouder"
+__date__ = "2022-01-29"
+__version__ = "1.0"
 
 import json
 from pathlib import Path
@@ -11,10 +11,12 @@ from pathlib import Path
 # Optional for yaml config
 try:
     from ruamel.yaml import YAML
+
     yaml = YAML(pure=True)
     yaml.default_flow_style = False
 except:
     yaml = None
+
 # Optional for toml config
 try:
     import toml
@@ -31,24 +33,26 @@ class Config:
     Can read/save json, yaml or toml.
     Use dot notation to get subkeys.
     """
+
     @property
     def path(self):
         """File path of the config file"""
         return self._path
+
     @path.setter
     def path(self, p):
         path = Path(p)
         if path.is_dir():
             try:
-                path = next(path.glob('config.*'))
+                path = next(path.glob("config.*"))
             except StopIteration:
-                path = path / 'config.yaml'
+                path = path / "config.yaml"
         if not path.exists():
             path.touch()
 
         self._path = path
-        self.yaml = (yaml and path.suffix == '.yaml')
-        self.toml = (toml and path.suffix == '.toml')
+        self.yaml = yaml and path.suffix == ".yaml"
+        self.toml = toml and path.suffix == ".toml"
 
     def load(self, path=None):
         """Load config from file"""
@@ -75,7 +79,7 @@ class Config:
         elif self.toml:
             self.path.write_text(toml.dumps(self._config))
         else:
-            self.path.write_text(json.dumps(self._config, indent='\t'))
+            self.path.write_text(json.dumps(self._config, indent="\t"))
 
     def __parent(self, keys, set_default=False):
         """Get the parent dict for a compound key"""
@@ -90,7 +94,7 @@ class Config:
 
     def __getitem__(self, key):
         """Get a config value"""
-        keys = key.split('.')
+        keys = key.split(".")
         try:
             p = self.__parent(keys)
             return p[keys[-1]]
@@ -99,16 +103,16 @@ class Config:
 
     def __setitem__(self, key, val):
         """Set a config value"""
-        keys = key.split('.')
+        keys = key.split(".")
         p = self.__parent(keys, set_default=True)
         p[keys[-1]] = val
 
     def __delitem__(self, key):
         """Remove a config value
-        
+
         This may leave empty dicts behind.
         """
-        keys = key.split('.')
+        keys = key.split(".")
         try:
             p = self.__parent(keys)
             del p[keys[-1]]
@@ -123,5 +127,6 @@ class Config:
             if set_default:
                 p[key] = default
             return default
+
 
 cfg = Config()

@@ -1,9 +1,9 @@
 """JSON Storage webservice
 """
 
-__author__  = 'Rogier Steehouder'
-__date__    = '2022-01-30'
-__version__ = '2.0'
+__author__ = "Rogier Steehouder"
+__date__ = "2022-01-30"
+__version__ = "2.0"
 
 import contextlib
 import datetime
@@ -16,9 +16,15 @@ from loguru import logger
 from starlette import status
 from starlite import (
     Controller,
-    Parameter, Body,
-    get, post, put, patch, delete,
-    HTTPException, NotFoundException
+    Parameter,
+    Body,
+    get,
+    post,
+    put,
+    patch,
+    delete,
+    HTTPException,
+    NotFoundException,
 )
 
 try:
@@ -42,15 +48,18 @@ class NotImplementedException(HTTPException):
 
 class JSONDatabase:
     """JSON storage database"""
+
     sql_get_item = "select s.content from storage s where s.name = :p and effdt <= :d and not exists (select 1 from storage where name = s.name and effdt > s.effdt and effdt <= :d) and s.status = 'A'"
     sql_insert_item = "insert into storage values(:p, :d, :s, :c)"
 
     def __init__(self):
-        self.logger = logger.bind(logtype='jsonstorage.database')
+        self.logger = logger.bind(logtype="jsonstorage.database")
 
-        self._db_file = Path(cfg.get('server.directory', '.')) / cfg.get('database.filename', 'jsonstorage.sqlite')
+        self._db_file = Path(cfg.get("server.directory", ".")) / cfg.get(
+            "database.filename", "jsonstorage.sqlite"
+        )
         if not self._db_file.exists():
-            self.logger.debug('New database file {}', self._db_file)
+            self.logger.debug("New database file {}", self._db_file)
             self._db_init()
 
     @contextlib.contextmanager
@@ -73,14 +82,16 @@ class JSONDatabase:
     def _db_init(self):
         """Initialize the database"""
         with self._db_connect() as conn:
-            conn.executescript("""
-            create table storage (name text, effdt datetime, status text, content text);
-            create unique index idx_storage on storage (name, effdt);
-            """)
+            conn.executescript(
+                """
+                create table storage (name text, effdt datetime, status text, content text);
+                create unique index idx_storage on storage (name, effdt);
+                """
+            )
 
     @staticmethod
     def datetime_todb(d: datetime.datetime) -> str:
-        return d.isoformat(sep=' ', timespec='seconds')
+        return d.isoformat(sep=" ", timespec="seconds")
 
     @staticmethod
     def datetime_fromdb(s: str) -> datetime.datetime:
@@ -88,10 +99,12 @@ class JSONDatabase:
 
     def cleanup(self):
         """Clean up old versions of items"""
-        self.logger.info('Cleanup: removing old inactive items from the database')
+        self.logger.info("Cleanup: removing old inactive items from the database")
         with self._db_connect() as conn:
             cur = conn.cursor()
-            cur.execute("with old_stuff as (select s.name, s.effdt from storage s where s.effdt < datetime('now', '-1 years') and (s.status = 'I' or exists (select 1 from storage where name = s.name and effdt > s.effdt))) delete from storage where exists (select 1 from old_stuff where name = storage.name and effdt = storage.effdt)")
+            cur.execute(
+                "with old_stuff as (select s.name, s.effdt from storage s where s.effdt < datetime('now', '-1 years') and (s.status = 'I' or exists (select 1 from storage where name = s.name and effdt > s.effdt))) delete from storage where exists (select 1 from old_stuff where name = storage.name and effdt = storage.effdt)"
+            )
             cur.close()
 
     def get_list(self, like: str = None, glob: str = None) -> list:
@@ -107,9 +120,18 @@ class JSONDatabase:
 
         with self._db_connect() as conn:
             cur = conn.cursor()
-            self.logger.debug('List for items like {} or {}', like, glob)
-            cur.execute("select s.name from storage s where effdt <= :d and not exists (select 1 from storage where name = s.name and effdt > s.effdt and effdt <= :d) and s.status = 'A' {} order by s.name".format(crit), {'l': like, 'g': glob, 'd': self.datetime_todb(datetime.datetime.utcnow())})
-            items = [row['name'] for row in cur.fetchall()]
+            self.logger.debug("List for items like {} or {}", like, glob)
+            cur.execute(
+                "select s.name from storage s where effdt <= :d and not exists (select 1 from storage where name = s.name and effdt > s.effdt and effdt <= :d) and s.status = 'A' {} order by s.name".format(
+                    crit
+                ),
+                {
+                    "l": like,
+                    "g": glob,
+                    "d": self.datetime_todb(datetime.datetime.utcnow()),
+                },
+            )
+            items = [row["name"] for row in cur.fetchall()]
             cur.close()
 
         return items
@@ -127,9 +149,21 @@ class JSONDatabase:
 
         with self._db_connect() as conn:
             cur = conn.cursor()
-            self.logger.debug('History list for items like {} or {}', like, glob)
-            cur.execute("select s.name, s.effdt, s.status from storage s where 1=1 {} order by s.name, s.effdt".format(crit), {'l': like, 'g': glob})
-            items = [{ 'name': row['name'], 'effdt': self.datetime_fromdb(row['effdt']), 'status': row['status']} for row in cur.fetchall()]
+            self.logger.debug("History list for items like {} or {}", like, glob)
+            cur.execute(
+                "select s.name, s.effdt, s.status from storage s where 1=1 {} order by s.name, s.effdt".format(
+                    crit
+                ),
+                {"l": like, "g": glob},
+            )
+            items = [
+                {
+                    "name": row["name"],
+                    "effdt": self.datetime_fromdb(row["effdt"]),
+                    "status": row["status"],
+                }
+                for row in cur.fetchall()
+            ]
             cur.close()
 
         return items
@@ -137,112 +171,131 @@ class JSONDatabase:
     def get_item(self, id: str, effdt: datetime.datetime = None) -> Any:
         if effdt is None:
             effdt = datetime.datetime.utcnow()
-        self.logger.debug('Retrieve item {} on {}', id, effdt)
+        self.logger.debug("Retrieve item {} on {}", id, effdt)
 
         with self._db_connect() as conn:
             cur = conn.cursor()
-            cur.execute(self.sql_get_item, {'p': id, 'd': self.datetime_todb(effdt)})
+            cur.execute(self.sql_get_item, {"p": id, "d": self.datetime_todb(effdt)})
             row = cur.fetchone()
             cur.close()
         if row is None:
             return None
 
-        return json.loads(row['content'])
+        return json.loads(row["content"])
 
     def put_item(self, content: Any, id: str, effdt: datetime.datetime = None):
         if effdt is None:
             effdt = datetime.datetime.utcnow()
-        self.logger.debug('Store item {} on {}', id, effdt)
+        self.logger.debug("Store item {} on {}", id, effdt)
 
         with self._db_connect() as conn:
             cur = conn.cursor()
             if content is None:
-                cur.execute(self.sql_insert_item, {'p': id, 'd': self.datetime_todb(effdt), 's': 'I', 'c': ''})
+                cur.execute(
+                    self.sql_insert_item,
+                    {"p": id, "d": self.datetime_todb(effdt), "s": "I", "c": ""},
+                )
             else:
-                cur.execute(self.sql_insert_item, {'p': id, 'd': self.datetime_todb(effdt), 's': 'A', 'c': json.dumps(content)})
+                cur.execute(
+                    self.sql_insert_item,
+                    {
+                        "p": id,
+                        "d": self.datetime_todb(effdt),
+                        "s": "A",
+                        "c": json.dumps(content),
+                    },
+                )
             cur.close()
 
 
 class JSONStorage(Controller):
     """Simple JSON storage webservice"""
-    path = '/storage'
-    tags = ['Storage']
+
+    path = "/storage"
+    tags = ["Storage"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.logger = logger.bind(logtype='jsonstorage.storage')
+        self.logger = logger.bind(logtype="jsonstorage.storage")
         self._db = JSONDatabase()
 
-    @get(path='/', status_code=status.HTTP_200_OK,
-        operation_id = 'list',
-        summary = 'List available JSON items',
-        tags = ['Storage']
+    @get(
+        path="/",
+        status_code=status.HTTP_200_OK,
+        operation_id="list",
+        summary="List available JSON items",
+        tags=["Storage"],
     )
-    async def get_list(self,
-        like: str = Parameter(required=False, default=None, description="Filter with sql 'like' syntax"),
-        glob: str = Parameter(required=False, default=None, description="Filter with 'glob' syntax")
+    async def get_list(
+        self,
+        like: str = Parameter(
+            required=False, default=None, description="Filter with sql 'like' syntax"
+        ),
+        glob: str = Parameter(
+            required=False, default=None, description="Filter with 'glob' syntax"
+        ),
     ) -> list:
         return self._db.get_list()
 
-    @post(path='/', status_code=status.HTTP_201_CREATED,
-        operation_id = 'new',
-        summary = 'Store a new JSON item (id is generated)',
-        tags = ['Storage']
+    @post(
+        path="/",
+        status_code=status.HTTP_201_CREATED,
+        operation_id="new",
+        summary="Store a new JSON item (id is generated)",
+        tags=["Storage"],
     )
-    async def post_json(self,
+    async def post_json(
+        self,
         data: Any = Body(),
-        prefix: str = Parameter(default='', description='Add prefix to the generated id')
+        prefix: str = Parameter(
+            default="", description="Add prefix to the generated id"
+        ),
     ) -> dict:
-        id = '{}{}'.format(prefix, uuid.uuid1())
-        self.logger.debug('Post: new item id {}', id)
+        id = "{}{}".format(prefix, uuid.uuid1())
+        self.logger.debug("Post: new item id {}", id)
         self._db.put_item(data, id)
-        return {
-            'id': id,
-            'content': data
-        }
+        return {"id": id, "content": data}
 
-    @get(path='/{id:str}', status_code=status.HTTP_200_OK,
-        operation_id = 'get',
-        summary = 'Retrieve a JSON item by id',
-        tags = ['Storage'],
-        raises = [NotFoundException]
+    @get(
+        path="/{id:str}",
+        status_code=status.HTTP_200_OK,
+        operation_id="get",
+        summary="Retrieve a JSON item by id",
+        tags=["Storage"],
+        raises=[NotFoundException],
     )
-    async def get_json(self,
-        id: str
-    ) -> Any:
-        self.logger.debug('Get item {}', id)
+    async def get_json(self, id: str) -> Any:
+        self.logger.debug("Get item {}", id)
         item = self._db.get_item(id)
         if item is None:
             raise NotFoundException(extra=id)
         return item
 
-    @put(path='/{id:str}', status_code=status.HTTP_200_OK,
-        operation_id = 'put',
-        summary = 'Store a JSON item by id',
-        tags = ['Storage']
+    @put(
+        path="/{id:str}",
+        status_code=status.HTTP_200_OK,
+        operation_id="put",
+        summary="Store a JSON item by id",
+        tags=["Storage"],
     )
-    async def put_json(self,
-        id: str,
-        data: Any = Body()
-    ) -> Any:
-        self.logger.debug('Put item {}', id)
+    async def put_json(self, id: str, data: Any = Body()) -> Any:
+        self.logger.debug("Put item {}", id)
         self._db.put_item(data, id)
         return data
 
-    @patch(path='/{id:str}', status_code=status.HTTP_200_OK,
-        operation_id = 'patch',
-        summary = 'Change a stored JSON item (see JSON Patch standard)',
-        tags = ['Storage'],
-        raises = [NotFoundException, NotImplementedException]
+    @patch(
+        path="/{id:str}",
+        status_code=status.HTTP_200_OK,
+        operation_id="patch",
+        summary="Change a stored JSON item (see JSON Patch standard)",
+        tags=["Storage"],
+        raises=[NotFoundException, NotImplementedException],
     )
-    async def patch_json(self,
-        id: str,
-        data: list = Body()
-    ) -> Any:
+    async def patch_json(self, id: str, data: list = Body()) -> Any:
         if jsonpatch is None:
             raise NotImplementedException()
 
-        self.logger.debug('Patch item {}', id)
+        self.logger.debug("Patch item {}", id)
         item = self._db.get_item(id)
         if item is None:
             raise NotFoundException(extra=id)
@@ -251,26 +304,28 @@ class JSONStorage(Controller):
 
         return item_new
 
-    @delete(path='/{id:str}', status_code=status.HTTP_204_NO_CONTENT,
-        operation_id = 'delete',
-        summary = 'Delete a JSON item',
-        description = 'The item is not really deleted, but marked inactive.',
-        tags = ['Storage'],
-        raises = [NotFoundException]
+    @delete(
+        path="/{id:str}",
+        status_code=status.HTTP_204_NO_CONTENT,
+        operation_id="delete",
+        summary="Delete a JSON item",
+        description="The item is not really deleted, but marked inactive.",
+        tags=["Storage"],
+        raises=[NotFoundException],
     )
-    async def delete_json(self,
-        id: str
-    ) -> None:
-        self.logger.debug('Delete item {}', id)
+    async def delete_json(self, id: str) -> None:
+        self.logger.debug("Delete item {}", id)
         item = self._db.get_item(id)
         if item is None:
             raise NotFoundException(extra=id)
         self._db.put_item(None, id)
 
-    @delete(path='/', status_code=status.HTTP_204_NO_CONTENT,
-        operation_id = 'cleanup',
-        summary = 'Permanently remove old (more than 1 year) versions of JSON items',
-        tags = ['Storage']
+    @delete(
+        path="/",
+        status_code=status.HTTP_204_NO_CONTENT,
+        operation_id="cleanup",
+        summary="Permanently remove old (more than 1 year) versions of JSON items",
+        tags=["Storage"],
     )
     async def cleanup(self) -> None:
         self._db.cleanup()
@@ -278,88 +333,115 @@ class JSONStorage(Controller):
 
 class JSONStorageHistory(Controller):
     """JSON storage webservice with history"""
-    path = '/history'
-    tags = ['History']
+
+    path = "/history"
+    tags = ["History"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.logger = logger.bind(logtype='jsonstorage.history')
+        self.logger = logger.bind(logtype="jsonstorage.history")
         self._db = JSONDatabase()
 
-    @get(path='/', status_code=status.HTTP_200_OK,
-        operation_id = 'list',
-        summary = 'List available JSON items',
-        tags = ['History']
+    @get(
+        path="/",
+        status_code=status.HTTP_200_OK,
+        operation_id="list",
+        summary="List available JSON items",
+        tags=["History"],
     )
-    async def get_list(self,
-        like: str = Parameter(required=False, default=None, description="Filter with sql 'like' syntax"),
-        glob: str = Parameter(required=False, default=None, description="Filter with 'glob' syntax")
+    async def get_list(
+        self,
+        like: str = Parameter(
+            required=False, default=None, description="Filter with sql 'like' syntax"
+        ),
+        glob: str = Parameter(
+            required=False, default=None, description="Filter with 'glob' syntax"
+        ),
     ) -> list:
         return self._db.get_list_hist()
 
-    @post(path='/', status_code=status.HTTP_201_CREATED,
-        operation_id = 'new',
-        summary = 'Store a new JSON item (id is generated)',
-        tags = ['History']
+    @post(
+        path="/",
+        status_code=status.HTTP_201_CREATED,
+        operation_id="new",
+        summary="Store a new JSON item (id is generated)",
+        tags=["History"],
     )
-    async def post_json(self,
+    async def post_json(
+        self,
         data: Any = Body(),
-        prefix: str = Parameter(default='', description='Add prefix to the generated id'),
-        effdt: datetime.datetime = Parameter(default=datetime.datetime.utcnow(), description='Use this date/time.')
+        prefix: str = Parameter(
+            default="", description="Add prefix to the generated id"
+        ),
+        effdt: datetime.datetime = Parameter(
+            default=datetime.datetime.utcnow(), description="Use this date/time."
+        ),
     ) -> dict:
-        id = '{}{}'.format(prefix, uuid.uuid1())
-        self.logger.debug('Post: new item id {} on {}', id, effdt)
+        id = "{}{}".format(prefix, uuid.uuid1())
+        self.logger.debug("Post: new item id {} on {}", id, effdt)
         self._db.put_item(data, id, effdt)
-        return {
-            'id': id,
-            'content': data
-        }
+        return {"id": id, "content": data}
 
-    @get(path='/{id:str}', status_code=status.HTTP_200_OK,
-        operation_id = 'get',
-        summary = 'Retrieve a JSON item by id',
-        tags = ['History'],
-        raises = [NotFoundException]
+    @get(
+        path="/{id:str}",
+        status_code=status.HTTP_200_OK,
+        operation_id="get",
+        summary="Retrieve a JSON item by id",
+        tags=["History"],
+        raises=[NotFoundException],
     )
-    async def get_json(self,
+    async def get_json(
+        self,
         id: str,
-        effdt: datetime.datetime = Parameter(default=datetime.datetime.utcnow(), description='Use this date/time.')
+        effdt: datetime.datetime = Parameter(
+            default=datetime.datetime.utcnow(), description="Use this date/time."
+        ),
     ) -> Any:
-        self.logger.debug('Get item {} on {}', id, effdt)
+        self.logger.debug("Get item {} on {}", id, effdt)
         item = self._db.get_item(id, effdt)
         if item is None:
             raise NotFoundException(extra=id)
         return item
 
-    @put(path='/{id:str}', status_code=status.HTTP_200_OK,
-        operation_id = 'put',
-        summary = 'Store a JSON item by id',
-        tags = ['History']
+    @put(
+        path="/{id:str}",
+        status_code=status.HTTP_200_OK,
+        operation_id="put",
+        summary="Store a JSON item by id",
+        tags=["History"],
     )
-    async def put_json(self,
+    async def put_json(
+        self,
         id: str,
         data: Any = Body(),
-        effdt: datetime.datetime = Parameter(default=datetime.datetime.utcnow(), description='Use this date/time.')
+        effdt: datetime.datetime = Parameter(
+            default=datetime.datetime.utcnow(), description="Use this date/time."
+        ),
     ) -> Any:
-        self.logger.debug('Put item {} on {}', id, effdt)
+        self.logger.debug("Put item {} on {}", id, effdt)
         self._db.put_item(data, id, effdt)
         return data
 
-    @patch(path='/{id:str}', status_code=status.HTTP_200_OK,
-        operation_id = 'patch',
-        summary = 'Change a stored JSON item (see JSON Patch standard)',
-        tags = ['History'],
-        raises = [NotFoundException, NotImplementedException]
+    @patch(
+        path="/{id:str}",
+        status_code=status.HTTP_200_OK,
+        operation_id="patch",
+        summary="Change a stored JSON item (see JSON Patch standard)",
+        tags=["History"],
+        raises=[NotFoundException, NotImplementedException],
     )
-    async def patch_json(self,
+    async def patch_json(
+        self,
         id: str,
         data: list = Body(),
-        effdt: datetime.datetime = Parameter(default=datetime.datetime.utcnow(), description='Use this date/time.')
+        effdt: datetime.datetime = Parameter(
+            default=datetime.datetime.utcnow(), description="Use this date/time."
+        ),
     ) -> Any:
         if jsonpatch is None:
             raise NotImplementedException()
 
-        self.logger.debug('Patch item {} on {}', id, effdt)
+        self.logger.debug("Patch item {} on {}", id, effdt)
         item = self._db.get_item(id, effdt)
         if item is None:
             raise NotFoundException(extra=id)
@@ -368,27 +450,34 @@ class JSONStorageHistory(Controller):
 
         return item_new
 
-    @delete(path='/{id:str}', status_code=status.HTTP_204_NO_CONTENT,
-        operation_id = 'delete',
-        summary = 'Delete a JSON item',
-        description = 'The item is not really deleted, but marked inactive. It will no longer shop up here, but may still be accessed using the history API.',
-        tags = ['History'],
-        raises = [NotFoundException]
+    @delete(
+        path="/{id:str}",
+        status_code=status.HTTP_204_NO_CONTENT,
+        operation_id="delete",
+        summary="Delete a JSON item",
+        description="The item is not really deleted, but marked inactive. It will no longer shop up here, but may still be accessed using the history API.",
+        tags=["History"],
+        raises=[NotFoundException],
     )
-    async def delete_json(self,
+    async def delete_json(
+        self,
         id: str,
-        effdt: datetime.datetime = Parameter(default=datetime.datetime.utcnow(), description='Use this date/time.')
+        effdt: datetime.datetime = Parameter(
+            default=datetime.datetime.utcnow(), description="Use this date/time."
+        ),
     ) -> None:
-        self.logger.debug('Delete item {} on {}', id, effdt)
+        self.logger.debug("Delete item {} on {}", id, effdt)
         item = self._db.get_item(id, effdt)
         if item is None:
             raise NotFoundException(extra=id)
         self._db.put_item(None, id, effdt)
 
-    @delete(path='/', status_code=status.HTTP_204_NO_CONTENT,
-        operation_id = 'cleanup',
-        summary = 'Permanently remove old (more than 1 year) versions of JSON items',
-        tags = ['History']
+    @delete(
+        path="/",
+        status_code=status.HTTP_204_NO_CONTENT,
+        operation_id="cleanup",
+        summary="Permanently remove old (more than 1 year) versions of JSON items",
+        tags=["History"],
     )
     async def cleanup(self) -> None:
         self._db.cleanup()

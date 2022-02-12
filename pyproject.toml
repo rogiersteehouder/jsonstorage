@@ -1,0 +1,28 @@
+[project]
+name = "JSON Storage"
+description = "Webservice to store and retrieve JSON data."
+version = "2.0"
+authors = [ { name = "Rogier Steehouder" } ]
+license = "MIT"
+readme = "README.md"
+python = "^3.10"
+homepage = "https://github.com/rogiersteehouder/jsonstorage"
+repository = "https://github.com/rogiersteehouder/jsonstorage"
+documentation = "https://github.com/rogiersteehouder/jsonstorage"
+
+dependencies = [
+	"starlite",
+	"uvicorn",
+	"passlib",
+	"loguru",
+]
+
+[project.optional-dependencies]
+patch = ["jsonpatch"]
+yaml = ["ruamel.yaml"]
+toml = ["toml"]
+dev = ["black"]
+
+[tool.black]
+line-length = 88
+skip-string-normalization = false
